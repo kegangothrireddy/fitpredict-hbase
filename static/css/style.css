@@ -1,0 +1,100 @@
+/* static/css/style.css - FitAnalytics Custom Stylesheet */
+
+:root {
+    --primary-blue: #0d6efd;
+    --primary-hover: #0b5ed7;
+    --bg-light: #f8fafc;
+    --card-border: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-dark);
+    background-color: var(--bg-light);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-size: 1.25rem;
+}
+
+.brand-icon {
+    font-size: 1.4rem;
+}
+
+.tracking-tight {
+    letter-spacing: -0.025em;
+}
+
+/* Status Dot Animation */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+/* Hero Banner Card */
+.hero-card {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+    border-radius: 1rem;
+}
+
+/* KPI Cards */
+.kpi-card {
+    border: 1px solid var(--card-border) !important;
+    border-radius: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+}
+
+.kpi-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+}
+
+/* Tables */
+.table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.table tbody td {
+    font-size: 0.9rem;
+}
+
+/* Progress bar transitions */
+.progress-bar {
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom form elements */
+.form-label {
+    font-size: 0.875rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Footer stickiness */
+.footer {
+    margin-top: auto;
+}

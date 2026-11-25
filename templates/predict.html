@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Predict Fitness Level - FitAnalytics{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>Predict Fitness Level</h3>
+                <p class="text-muted mb-0">Enter biometric and activity metrics to classify fitness level and archive to Apache HBase.</p>
+            </div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form action="{{ url_for('predict') }}" method="POST" id="fitnessPredictForm">
+
+                    <!-- Section 1: Personal Profile -->
+                    <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">
+                        <i class="fa-solid fa-user me-2"></i>1. Profile & Body Metrics
+                    </h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="age">Age (years) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="age" name="age" min="10" max="100" value="{{ form_data.get('age', 25) }}" required>
+                            <small class="text-muted">Between 10 - 100</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="gender">Gender <span class="text-danger">*</span></label>
+                            <select class="form-select" id="gender" name="gender" required>
+                                <option value="Male" {% if form_data.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if form_data.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="height_cm">Height (cm) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" class="form-control" id="height_cm" name="height_cm" min="100" max="250" value="{{ form_data.get('height_cm', 175) }}" required>
+                            <small class="text-muted">e.g. 175 cm</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="weight_kg">Weight (kg) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" class="form-control" id="weight_kg" name="weight_kg" min="25" max="250" value="{{ form_data.get('weight_kg', 70) }}" required>
+                            <small class="text-muted">e.g. 70 kg</small>
+                        </div>
+
+                        <!-- Realtime Dynamic BMI Preview -->
+                        <div class="col-12">
+                            <div class="p-2 bg-light border rounded-3 d-flex align-items-center justify-content-between">
+                                <span class="text-muted small">
+                                    <i class="fa-solid fa-calculator text-primary me-1"></i> Live BMI Preview:
+                                </span>
+                                <span class="fw-bold text-primary" id="liveBmiDisplay">Calculating...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Daily Activity -->
+                    <h5 class="fw-bold text-success mb-3 pb-2 border-bottom">
+                        <i class="fa-solid fa-person-running me-2"></i>2. Daily Physical Activity
+                    </h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="daily_steps">Daily Steps <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="daily_steps" name="daily_steps" min="0" max="50000" value="{{ form_data.get('daily_steps', 8500) }}" required>
+                                <span class="input-group-text"><i class="fa-solid fa-shoe-prints"></i></span>
+                            </div>
+                            <small class="text-muted">Recommended: &ge; 10,000</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="exercise_mins">Exercise Time (mins) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="exercise_mins" name="exercise_mins" min="0" max="360" value="{{ form_data.get('exercise_mins', 40) }}" required>
+                                <span class="input-group-text">mins</span>
+                            </div>
+                            <small class="text-muted">Moderate or vigorous</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="calories_burned">Calories Burned <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="calories_burned" name="calories_burned" min="500" max="8000" value="{{ form_data.get('calories_burned', 2300) }}" required>
+                                <span class="input-group-text">kcal</span>
+                            </div>
+                            <small class="text-muted">Total active & resting</small>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Health & Recovery -->
+                    <h5 class="fw-bold text-danger mb-3 pb-2 border-bottom">
+                        <i class="fa-solid fa-heart-pulse me-2"></i>3. Health & Recovery Metrics
+                    </h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="heart_rate">Heart Rate (BPM) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="heart_rate" name="heart_rate" min="40" max="150" value="{{ form_data.get('heart_rate', 68) }}" required>
+                                <span class="input-group-text"><i class="fa-solid fa-heartbeat text-danger"></i></span>
+                            </div>
+                            <small class="text-muted">Normal: 60 - 100 bpm</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="sleep_hours">Sleep (Hours) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="0.5" class="form-control" id="sleep_hours" name="sleep_hours" min="2" max="16" value="{{ form_data.get('sleep_hours', 7.5) }}" required>
+                                <span class="input-group-text"><i class="fa-solid fa-bed"></i></span>
+                            </div>
+                            <small class="text-muted">Optimal: 7 - 9 hrs</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="water_liters">Water (Liters) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="0.1" class="form-control" id="water_liters" name="water_liters" min="0.5" max="10" value="{{ form_data.get('water_liters', 3.0) }}" required>
+                                <span class="input-group-text"><i class="fa-solid fa-droplet text-primary"></i></span>
+                            </div>
+                            <small class="text-muted">Goal: 2.5 - 3.5 L</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="stress_level">Stress Level <span class="text-danger">*</span></label>
+                            <select class="form-select" id="stress_level" name="stress_level" required>
+                                <option value="Low" {% if form_data.get('stress_level') == 'Low' %}selected{% endif %}>Low</option>
+                                <option value="Medium" {% if form_data.get('stress_level', 'Medium') == 'Medium' %}selected{% endif %}>Medium</option>
+                                <option value="High" {% if form_data.get('stress_level') == 'High' %}selected{% endif %}>High</option>
+                            </select>
+                            <small class="text-muted">Daily perceived stress</small>
+                        </div>
+                    </div>
+
+                    <!-- Submission Callout & Submit Button -->
+                    <div class="alert alert-secondary border d-flex align-items-center gap-3 mb-4">
+                        <i class="fa-solid fa-database fa-2x text-primary"></i>
+                        <div class="small">
+                            <strong>Big Data Pipeline:</strong> Upon submission, inputs will be evaluated by the Random Forest model and archived directly into the Apache HBase table <code>fitness_data</code> under <code>profile</code>, <code>activity</code>, <code>health</code>, and <code>prediction</code> column families.
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-semibold shadow-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Analyze & Save to Apache HBase
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Realtime live BMI calculation on form change
+    function updateBmiPreview() {
+        const height = parseFloat(document.getElementById('height_cm').value);
+        const weight = parseFloat(document.getElementById('weight_kg').value);
+        const display = document.getElementById('liveBmiDisplay');
+        if (height > 0 && weight > 0) {
+            const heightM = height / 100.0;
+            const bmi = (weight / (heightM * heightM)).toFixed(2);
+            let category = "Normal";
+            let color = "text-success";
+            if (bmi < 18.5) { category = "Underweight"; color = "text-warning"; }
+            else if (bmi >= 25.0 && bmi < 30.0) { category = "Overweight"; color = "text-warning"; }
+            else if (bmi >= 30.0) { category = "Obese"; color = "text-danger"; }
+
+            display.innerHTML = `${bmi} kg/m² (<span class="${color}">${category}</span>)`;
+        } else {
+            display.innerText = "Enter height and weight";
+        }
+    }
+
+    document.getElementById('height_cm').addEventListener('input', updateBmiPreview);
+    document.getElementById('weight_kg').addEventListener('input', updateBmiPreview);
+    updateBmiPreview();
+</script>
+{% endblock %}

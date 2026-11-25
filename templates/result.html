@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction Results - FitAnalytics{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="fa-solid fa-chart-simple text-primary me-2"></i>Predictive Analysis Output</h3>
+                <p class="text-muted mb-0">Results generated from Scikit-learn Random Forest model & saved to Apache HBase.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('predict') }}" class="btn btn-outline-primary">
+                    <i class="fa-solid fa-plus me-1"></i> New Assessment
+                </a>
+                <a href="{{ url_for('history') }}" class="btn btn-primary">
+                    <i class="fa-solid fa-database me-1"></i> View All in HBase
+                </a>
+            </div>
+        </div>
+
+        <!-- HBase Storage Confirmation Banner -->
+        {% if hbase_result.stored_in_hbase %}
+        <div class="alert alert-success border border-success-subtle shadow-sm d-flex align-items-center justify-content-between p-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-success text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                    <i class="fa-solid fa-check fa-lg"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0 text-success">Archived to Apache HBase</h6>
+                    <small class="text-secondary">Row Key: <code class="fw-bold text-dark">{{ hbase_result.row_key }}</code> &bull; Column Families: <code>profile</code>, <code>activity</code>, <code>health</code>, <code>prediction</code></small>
+                </div>
+            </div>
+            <span class="badge bg-success px-3 py-2">HBase Table: fitness_data</span>
+        </div>
+        {% else %}
+        <div class="alert alert-warning border border-warning-subtle shadow-sm d-flex align-items-center gap-3 p-3 mb-4">
+            <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-triangle-exclamation fa-lg"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0 text-dark">HBase Service Notice (Offline Mode)</h6>
+                <small class="text-secondary">{{ hbase_result.message }} Row Key: <code>{{ hbase_result.row_key }}</code></small>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4 mb-4">
+            <!-- Main Result Card -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100 text-center p-4">
+                    <span class="text-muted small fw-semibold text-uppercase tracking-wider">Predicted Fitness Level</span>
+
+                    <div class="my-4">
+                        {% if result.predicted_level == 'High' %}
+                            <div class="display-3 fw-bold text-success mb-2">High</div>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                                <i class="fa-solid fa-circle-check me-1"></i> Excellent Fitness & Activity
+                            </span>
+                        {% elif result.predicted_level == 'Moderate' %}
+                            <div class="display-3 fw-bold text-warning mb-2">Moderate</div>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 fs-6">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Healthy Baseline with Growth Room
+                            </span>
+                        {% else %}
+                            <div class="display-3 fw-bold text-danger mb-2">Low</div>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+                                <i class="fa-solid fa-circle-exclamation me-1"></i> Sedentary or Recovery Focus Needed
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Model Probabilities -->
+                    {% if result.probabilities %}
+                    <div class="bg-light p-3 rounded-3 text-start mt-auto">
+                        <span class="text-muted small fw-semibold d-block mb-2">Classification Confidence Probabilities:</span>
+                        <div class="row g-2 text-center">
+                            {% for cls_name, prob in result.probabilities.items() %}
+                            <div class="col-4">
+                                <small class="text-muted d-block">{{ cls_name }}</small>
+                                <span class="fw-bold {% if cls_name == result.predicted_level %}text-primary{% else %}text-secondary{% endif %}">
+                                    {{ prob }}%
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Score and BMI Card -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100 p-4">
+                    <!-- Fitness Score -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-secondary">Documented Fitness Score</span>
+                            <span class="display-6 fw-bold text-primary">{{ result.fitness_score }}<small class="fs-6 text-muted">/100</small></span>
+                        </div>
+                        <div class="progress" style="height: 12px;">
+                            <div class="progress-bar {% if result.fitness_score >= 75 %}bg-success{% elif result.fitness_score >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 role="progressbar" style="width: {{ result.fitness_score }}%"></div>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Composite score evaluating daily steps (25%), workout minutes (20%), sleep (15%), hydration (15%), heart rate (15%), and BMI (10%).
+                        </small>
+                    </div>
+
+                    <hr>
+
+                    <!-- Calculated BMI -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="text-muted small d-block">Body Mass Index (BMI)</span>
+                            <h4 class="fw-bold mb-0">{{ result.bmi }} <small class="fs-6 text-muted">kg/m²</small></h4>
+                        </div>
+                        <div>
+                            {% if result.bmi < 18.5 %}
+                                <span class="badge bg-warning-subtle text-warning border px-3 py-2">Underweight</span>
+                            {% elif result.bmi <= 24.9 %}
+                                <span class="badge bg-success-subtle text-success border px-3 py-2">Normal Weight</span>
+                            {% elif result.bmi <= 29.9 %}
+                                <span class="badge bg-warning-subtle text-warning border px-3 py-2">Overweight</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border px-3 py-2">Obese</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <small class="text-muted">Calculated using weight: {{ result.inputs.weight_kg }} kg & height: {{ result.inputs.height_cm }} cm.</small>
+
+                    <hr>
+
+                    <!-- Submitted Metrics Recap -->
+                    <div class="row g-2 text-sm text-secondary">
+                        <div class="col-6"><i class="fa-solid fa-shoe-prints text-muted me-1"></i> Steps: <strong>{{ result.inputs.daily_steps }}</strong></div>
+                        <div class="col-6"><i class="fa-solid fa-stopwatch text-muted me-1"></i> Exercise: <strong>{{ result.inputs.exercise_mins }} mins</strong></div>
+                        <div class="col-6"><i class="fa-solid fa-heartbeat text-muted me-1"></i> Heart Rate: <strong>{{ result.inputs.heart_rate }} bpm</strong></div>
+                        <div class="col-6"><i class="fa-solid fa-bed text-muted me-1"></i> Sleep: <strong>{{ result.inputs.sleep_hours }} hrs</strong></div>
+                        <div class="col-6"><i class="fa-solid fa-droplet text-muted me-1"></i> Water: <strong>{{ result.inputs.water_liters }} L</strong></div>
+                        <div class="col-6"><i class="fa-solid fa-fire text-muted me-1"></i> Burn: <strong>{{ result.inputs.calories_burned }} kcal</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personalized Recommendations -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-2">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-lightbulb text-warning me-2"></i>Personalized Wellness Recommendations</h5>
+                <small class="text-muted">Algorithmically synthesized guidance based on activity, recovery, and hydration thresholds.</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for rec in result.recommendations %}
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded-3 bg-light d-flex align-items-start gap-3 h-100">
+                            <div class="text-primary mt-1">
+                                <i class="fa-solid fa-circle-arrow-right fa-lg"></i>
+                            </div>
+                            <div>
+                                <p class="mb-0 text-dark fw-medium small">{{ rec }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

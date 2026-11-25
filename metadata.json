@@ -1,0 +1,6 @@
+{
+  "name": "HBase Fitness Analytics",
+  "description": "An Apache HBase-Based Predictive Analytics System for Fitness and Wellness",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

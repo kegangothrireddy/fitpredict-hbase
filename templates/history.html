@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Apache HBase History - FitAnalytics{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-database text-primary me-2"></i>Apache HBase Prediction History</h3>
+        <p class="text-muted mb-0">Scanned directly from Apache HBase table <code>{{ hbase_status.table_name }}</code> via Thrift RPC.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('predict') }}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> New Prediction
+        </a>
+    </div>
+</div>
+
+<!-- Storage Status Card -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-2 rounded-2 {% if hbase_status.connected %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %}">
+                <i class="fa-solid fa-server fa-xl"></i>
+            </div>
+            <div>
+                <span class="text-muted small">Current HBase Connection:</span>
+                <div class="fw-bold">
+                    {% if hbase_status.connected %}
+                        <span class="text-success"><i class="fa-solid fa-circle-check"></i> Connected to {{ hbase_status.host }}:{{ hbase_status.port }} (Table: {{ hbase_status.table_name }})</span>
+                    {% else %}
+                        <span class="text-warning"><i class="fa-solid fa-circle-exclamation"></i> Offline Fallback Active (Records saved in local runtime memory)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="text-sm text-muted">
+            Total History Items: <strong class="text-dark">{{ predictions|length }}</strong>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Records Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3 pb-2 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0">Persisted Records</h5>
+        <div class="input-group" style="max-width: 280px;">
+            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+            <input type="text" id="historySearch" class="form-control form-control-sm border-start-0" placeholder="Filter rows...">
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="historyTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp & Row Key</th>
+                        <th>Profile</th>
+                        <th>Activity</th>
+                        <th>Health Metrics</th>
+                        <th>BMI</th>
+                        <th>Score</th>
+                        <th>Predicted Level</th>
+                        <th>Recommendations</th>
+                        <th>HBase Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if predictions %}
+                        {% for p in predictions %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold text-dark">{{ p.prediction_date }}</div>
+                                <code class="small text-muted" title="{{ p.row_key }}">{{ p.row_key }}</code>
+                            </td>
+                            <td>
+                                <div>{{ p.age }} yrs, {{ p.gender }}</div>
+                                <small class="text-muted">{{ p.height_cm }}cm / {{ p.weight_kg }}kg</small>
+                            </td>
+                            <td>
+                                <div><strong>{{ p.daily_steps }}</strong> steps</div>
+                                <small class="text-muted">{{ p.exercise_mins }}m &bull; {{ p.calories_burned }}kcal</small>
+                            </td>
+                            <td>
+                                <div><i class="fa-solid fa-heartbeat text-danger me-1"></i>{{ p.heart_rate }} bpm</div>
+                                <small class="text-muted">{{ p.sleep_hours }}h sleep &bull; {{ p.water_liters }}L H₂O</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-dark">{{ p.bmi }}</span>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-primary">{{ p.fitness_score }}</span><span class="small text-muted">/100</span>
+                            </td>
+                            <td>
+                                {% if p.predicted_level == 'High' %}
+                                    <span class="badge bg-success px-2 py-1">High</span>
+                                {% elif p.predicted_level == 'Moderate' %}
+                                    <span class="badge bg-warning px-2 py-1">Moderate</span>
+                                {% else %}
+                                    <span class="badge bg-danger px-2 py-1">Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="Recommendations" data-bs-content="{{ p.recommendation }}">
+                                    <i class="fa-solid fa-comment-dots"></i> View
+                                </button>
+                            </td>
+                            <td>
+                                {% if p.stored_in_hbase %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <i class="fa-solid fa-database"></i> HBase
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                        <i class="fa-solid fa-memory"></i> Memory
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-box-open fa-2x mb-2 d-block"></i>
+                                No predictions stored yet. Use the prediction form to add records.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Enable Bootstrap Popovers for recommendations
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    [...popoverTriggerList].map(el => new bootstrap.Popover(el, { trigger: 'focus' }));
+
+    // Realtime client-side table filter
+    document.getElementById('historySearch')?.addEventListener('keyup', function() {
+        const val = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#historyTable tbody tr');
+        rows.forEach(r => {
+            const text = r.innerText.toLowerCase();
+            r.style.display = text.includes(val) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}
